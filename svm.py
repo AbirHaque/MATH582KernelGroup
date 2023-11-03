@@ -10,6 +10,10 @@ class SVM:
         self.C = C
         
     def fit(self, X, y):
+        f = open( 'their.txt', 'w' )
+        f.write( str( X ) + '\n' )
+        f.write( str( y ) + '\n' )
+        f.close()
         m, n = X.shape
         K = np.matmul( X, X.T )
 

@@ -30,15 +30,17 @@ class FeatureSelection:
 
     def __create_features( self ):
         new_feature_values = self.__pca_features()
+        original_columns = [ "Number of times pregnant","Plasma glucose concentration a 2 hours in an oral glucose tolerance test","Diastolic blood pressure (mm Hg)","Triceps skin fold thickness (mm)","2-Hour serum insulin (mu U/ml)","Body mass index (weight in kg/(height in m)^2)","Diabetes pedigree function","Age (years)","Class variable (0 or 1)" ]
         new_features_columns = [ f'z{ i + 1 }' for i in range( len( self._dataframe.columns ) - 1 ) ]
         
+        self._dataframe.columns = original_columns
         concated_data = pd.DataFrame( new_feature_values, columns = new_features_columns )
         self._dataframe = pd.concat( [ concated_data, self._dataframe ], axis = 1 )
 
         self._categories = self._dataframe.columns[ : -1 ]
         self._output = self._dataframe.columns[ -1 ]
 
-        for column, data in zip( self._dataframe.columns, self._dataframe.values.T ):
+        for column, data in self._dataframe.items():
             self._vals[ column ] = data
 
         self._vals[ self._output ] = np.asarray( [ [ d ] for d in self._vals[ self._output ] ] ).T
@@ -49,14 +51,19 @@ class FeatureSelection:
         y = []
         for data in self._dataframe.values:
             x.append( np.array( data[ : -1 ], dtype = float ) )
-            y.append( data[ -1 ] )
+            y.append( [ data[ -1 ] ] )
 
         x = np.asarray( x )
         y = np.asarray( y )
 
+        f = open( 'our.txt', 'w' )
+        f.write( str( x ) + '\n' )
+        f.write( str( y ) + '\n' )
+        f.close()
+
         for idn,n in np.ndenumerate(y):
             if n == 0:
-                y[ idn ] = -1
+                y[idn] = -1
 
         pca.fit( x )
         principleComponents = pca.transform( x )
@@ -121,6 +128,8 @@ class FeatureSelection:
         best_features = []
         best_accuracy = 0
 
+        print( self._vals )
+
         for iteration in range( 1 ):
             unions = []
             intersections = []
@@ -176,7 +185,7 @@ class FeatureSelection:
         print( len( best_features ) )
         print( best_accuracy )
 
-dataframe = read_csv( "DiabetesBinaryClassification.csv", names = [ "Number of times pregnant","Plasma glucose concentration a 2 hours in an oral glucose tolerance test","Diastolic blood pressure (mm Hg)","Triceps skin fold thickness (mm)","2-Hour serum insulin (mu U/ml)","Body mass index (weight in kg/(height in m)^2)","Diabetes pedigree function","Age (years)","Class variable (0 or 1)" ] )
+dataframe = read_csv( "DiabetesBinaryClassification.csv")#, names = [ "Number of times pregnant","Plasma glucose concentration a 2 hours in an oral glucose tolerance test","Diastolic blood pressure (mm Hg)","Triceps skin fold thickness (mm)","2-Hour serum insulin (mu U/ml)","Body mass index (weight in kg/(height in m)^2)","Diabetes pedigree function","Age (years)","Class variable (0 or 1)" ] )
 dataframe = dataframe.drop_duplicates()
 dataframe = dataframe.dropna()
 temp = FeatureSelection( SVM(1, 1), dataframe )
