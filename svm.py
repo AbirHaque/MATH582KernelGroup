@@ -5,15 +5,11 @@ solvers.options['show_progress'] = False
 
 class SVM:
 
-    def __init__(self, kernel_fn, C=(10 ** -3)):
+    def __init__(self, kernel_fn, C=0.1):
         self.k = lambda p, n: p @ n
         self.C = C
         
     def fit(self, X, y):
-        f = open( 'their.txt', 'w' )
-        f.write( str( X ) + '\n' )
-        f.write( str( y ) + '\n' )
-        f.close()
         m, n = X.shape
         K = np.matmul( X, X.T )
 
