@@ -14,7 +14,7 @@ from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, accuracy_score
 from sklearn import svm
-from svm import SVM
+from sklearn.ensemble import RandomForestClassifier
 
 from random import choice, choices
 
@@ -41,8 +41,6 @@ class FeatureSelection:
         for column, data in zip( self._dataframe.columns, self._dataframe.values.T ):
             self._vals[ column ] = data
 
-        self._vals[ self._output ] = np.asarray( [ [ d ] for d in self._vals[ self._output ] ] ).T
-
     def __pca_features( self ):
         pca = PCA( n_components = len( self._dataframe.columns ) - 1 )
         x = []
@@ -50,13 +48,6 @@ class FeatureSelection:
         for data in self._dataframe.values:
             x.append( np.array( data[ : -1 ], dtype = float ) )
             y.append( data[ -1 ] )
-
-        x = np.asarray( x )
-        y = np.asarray( y )
-
-        for idn,n in np.ndenumerate(y):
-            if n == 0:
-                y[ idn ] = -1
 
         pca.fit( x )
         principleComponents = pca.transform( x )
@@ -117,33 +108,33 @@ class FeatureSelection:
         return mutated_subsets
 
     def __genetic_algorithm( self ):
-        best_5 = [ category for category in list( self._categories ) if 'z' not in category ]# + [ list( choices( self._categories, k = 5 ) ) for i in range( 5 ) ]
+        best_5 = [ list( self._categories ) ] + [ list( choices( self._categories, k = 5 ) ) for i in range( 5 ) ]
         best_features = []
         best_accuracy = 0
 
-        for iteration in range( 1 ):
+        for iteration in range( 50 ):
             unions = []
             intersections = []
             list_of_sets = []
 
-            # completed_combos = []
-            # for i in range( len( best_5 ) ):
-            #     for j in range( len( best_5 ) ):
-            #         if i != j and ( i, j ) not in completed_combos and ( j, i ) not in completed_combos:
-            #             unions.append( list( set( best_5[ i ] ).union( set( best_5[ i ] ) ) ) )
-            #             intersections.append( list( set( best_5[ i ] ).intersection( set( best_5[ i ] ) ) ) )
-            #             completed_combos.append( ( i, j ) )
-            #             completed_combos.append( ( j, i ) )
+            completed_combos = []
+            for i in range( len( best_5 ) ):
+                for j in range( len( best_5 ) ):
+                    if i != j and ( i, j ) not in completed_combos and ( j, i ) not in completed_combos:
+                        unions.append( list( set( best_5[ i ] ).union( set( best_5[ i ] ) ) ) )
+                        intersections.append( list( set( best_5[ i ] ).intersection( set( best_5[ i ] ) ) ) )
+                        completed_combos.append( ( i, j ) )
+                        completed_combos.append( ( j, i ) )
 
-            list_of_sets.extend( [ best_5 ] )
-            #list_of_sets.extend( unions )
-            #list_of_sets.extend( intersections )
-            #list_of_sets.extend( self.__create_mutations( list_of_sets ) )
+            list_of_sets.extend( best_5 )
+            list_of_sets.extend( unions )
+            list_of_sets.extend( intersections )
+            list_of_sets.extend( self.__create_mutations( list_of_sets ) )
             
             subset_to_accuracy = []
             for subset in list_of_sets:
                 x = np.asarray( [ self._vals[ feature ] for feature in subset ] ).T
-                y = np.asarray( self._vals[ self._output ] ).T
+                y = self._vals[ self._output ].T
 
                 X_Fold1, X_Fold2, Y_Fold1, Y_Fold2 = train_test_split( x,  y , test_size = 0.50, random_state = 1 )
                 self._model.fit( X_Fold2, Y_Fold2 )
@@ -152,16 +143,17 @@ class FeatureSelection:
                 self._model.fit( X_Fold1, Y_Fold1 )
                 pred2 = self._model.predict( X_Fold2 )
 
-                pred_outputs = concatenate( [ pred1, pred2 ] )
+                pred_outputs = concatenate( [ pred1,  pred2 ] )
                 true_outputs = concatenate( [ Y_Fold1, Y_Fold2 ] )
+
                 subset_to_accuracy.append( ( subset, accuracy_score( true_outputs, pred_outputs ) ) )
 
             subset_to_accuracy.sort( key = lambda x: x[ 1 ], reverse = True )
-            best_features = subset_to_accuracy[ 0 ][ 0 ]
-            best_accuracy = subset_to_accuracy[ 0 ][ 1 ]
-            break
             best_5.clear()
             best_5 = [ subset_to_accuracy[ feature ][ 0 ] for feature in range( 5 ) ]
+            best_features = subset_to_accuracy[ 0 ][ 0 ]
+            best_accuracy = subset_to_accuracy[ 0 ][ 1 ]
+
             has_100 = False
             for feature in range( 5 ):
                 if subset_to_accuracy[ feature ][ 1 ] == 100: has_100 = True
@@ -177,9 +169,7 @@ class FeatureSelection:
         print( best_accuracy )
 
 dataframe = read_csv( "DiabetesBinaryClassification.csv", names = [ "Number of times pregnant","Plasma glucose concentration a 2 hours in an oral glucose tolerance test","Diastolic blood pressure (mm Hg)","Triceps skin fold thickness (mm)","2-Hour serum insulin (mu U/ml)","Body mass index (weight in kg/(height in m)^2)","Diabetes pedigree function","Age (years)","Class variable (0 or 1)" ] )
-dataframe = dataframe.drop_duplicates()
-dataframe = dataframe.dropna()
-temp = FeatureSelection( SVM(1, 1), dataframe )
+temp = FeatureSelection( svm.SVC(), dataframe )
 temp.get_best_model()
 
 
