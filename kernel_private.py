@@ -3,34 +3,33 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
 
-class KernelTester:
-    def __init__(self, X, y):
-        self.X = X
-        self.y = y
-        self.kernels = ['linear', 'poly', 'rbf', 'sigmoid']
-        self.kernel_params = {'poly': {'degree': 3, 'coef0': 1}, 'rbf': {'gamma': 0.1}, 'sigmoid': {'coef0': 2}}
-        self.results = {}
-        
-    def _scale_features(self):
-        scaler = StandardScaler()
-        self.X_scaled = scaler.fit_transform(self.X)
+import numpy as np
 
-    def _split_data(self):
-        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
-            self.X_scaled, self.y, test_size=0.2, random_state=42)
+class KernelEquations:
+    def __init__( self, kernel_selection = "linear" ):
+        self._kernel_selection = kernel_selection
+
+        if kernel_selection == "linear":
+            self._kernel_function = lambda X, y: np.matmul( X, y.T )
         
-    def _test_kernels(self):
-        for kernel in self.kernels:
-            params = self.kernel_params.get(kernel, {})
-            clf = SVC(kernel=kernel, gamma='auto', **params)
-            clf.fit(self.X_train, self.y_train)
-            y_pred = clf.predict(self.X_test)
-            accuracy = accuracy_score(self.y_test, y_pred)
-            self.results[kernel] = accuracy
-            print(f'Accuracy with {kernel} kernel: {accuracy:.2f}')
+        elif kernel_selection == "rbf":
+            self._kernel_function = lambda X, y, sigma: np.exp( -( X - y ).T @ ( X - y ) / sigma ** 2 )
+
+        elif kernel_selection == "poly":
+            self._kernel_function = lambda X, y, d, C: ( np.matmul( X, y.T ) + C ) ** d
+
+        elif kernel_selection == "sigmoid":
+            self._kernel_function = lambda X, y , sigma, coef0: np.tanh( sigma * np.dot( X, y.T ) + coef0 )
     
-    def _run_tests(self):
-        self._scale_features()
-        self._split_data()
-        self._test_kernels()
-        return self.results
+    def calculate_kernel( self, **kwargs ):
+        if self._kernel_selection == "linear":
+            return self._kernel_function( kwargs[ "X" ], kwargs[ "y" ] )
+
+        elif self._kernel_selection == "rbf":
+            return self._kernel_function( kwargs[ "X" ], kwargs[ "y" ], kwargs[ "sigma" ] )
+        
+        elif self._kernel_selection == "poly":
+            return self._kernel_function( kwargs[ "X" ], kwargs[ "y" ], kwargs[ "d" ], kwargs[ "C" ] )
+        
+        elif self._kernel_selection == "sigmoid":
+            return self._kernel_function( kwargs[ "X" ], kwargs[ "y" ], kwargs[ "sigma" ], kwargs[ "coef0" ] )

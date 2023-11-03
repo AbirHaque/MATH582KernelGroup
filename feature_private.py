@@ -14,7 +14,7 @@ from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, accuracy_score
 from sklearn import svm
-from sklearn.ensemble import RandomForestClassifier
+from svm import SVM
 
 from random import choice, choices
 
@@ -30,24 +30,28 @@ class FeatureSelection:
 
     def __create_features( self ):
         new_feature_values = self.__pca_features()
+        original_columns = [ "Number of times pregnant","Plasma glucose concentration a 2 hours in an oral glucose tolerance test","Diastolic blood pressure (mm Hg)","Triceps skin fold thickness (mm)","2-Hour serum insulin (mu U/ml)","Body mass index (weight in kg/(height in m)^2)","Diabetes pedigree function","Age (years)","Class variable (0 or 1)" ]
         new_features_columns = [ f'z{ i + 1 }' for i in range( len( self._dataframe.columns ) - 1 ) ]
         
+        self._dataframe.columns = original_columns
         concated_data = pd.DataFrame( new_feature_values, columns = new_features_columns )
         self._dataframe = pd.concat( [ concated_data, self._dataframe ], axis = 1 )
 
         self._categories = self._dataframe.columns[ : -1 ]
         self._output = self._dataframe.columns[ -1 ]
 
-        for column, data in zip( self._dataframe.columns, self._dataframe.values.T ):
+        for column, data in self._dataframe.items():
             self._vals[ column ] = data
+
+        self._vals[ self._output ] = np.asarray( [ np.array( [ -1 if d == 0 else 1 ], dtype = float ) for d in self._vals[ self._output ] ] ).T
 
     def __pca_features( self ):
         pca = PCA( n_components = len( self._dataframe.columns ) - 1 )
         x = []
-        y = []
         for data in self._dataframe.values:
             x.append( np.array( data[ : -1 ], dtype = float ) )
-            y.append( data[ -1 ] )
+
+        x = np.asarray( x )
 
         pca.fit( x )
         principleComponents = pca.transform( x )
@@ -108,15 +112,15 @@ class FeatureSelection:
         return mutated_subsets
 
     def __genetic_algorithm( self ):
-        best_5 = [ list( self._categories ) ] + [ list( choices( self._categories, k = 5 ) ) for i in range( 5 ) ]
+        best_5 = [ list( self._categories ) ] + [ list( choices( self._categories, k = 5 ) ) for i in range( 5 ) ]        
         best_features = []
         best_accuracy = 0
 
-        for iteration in range( 50 ):
+        for iteration in range( 10 ):
             unions = []
             intersections = []
             list_of_sets = []
-
+#
             completed_combos = []
             for i in range( len( best_5 ) ):
                 for j in range( len( best_5 ) ):
@@ -134,26 +138,25 @@ class FeatureSelection:
             subset_to_accuracy = []
             for subset in list_of_sets:
                 x = np.asarray( [ self._vals[ feature ] for feature in subset ] ).T
-                y = self._vals[ self._output ].T
+                y = np.asarray( self._vals[ self._output ] ).T
 
                 X_Fold1, X_Fold2, Y_Fold1, Y_Fold2 = train_test_split( x,  y , test_size = 0.50, random_state = 1 )
-                self._model.fit( X_Fold2, Y_Fold2 )
-                pred1 = self._model.predict( X_Fold1 )
-
                 self._model.fit( X_Fold1, Y_Fold1 )
-                pred2 = self._model.predict( X_Fold2 )
+                pred1 = self._model.predict( X_Fold2 )
 
-                pred_outputs = concatenate( [ pred1,  pred2 ] )
-                true_outputs = concatenate( [ Y_Fold1, Y_Fold2 ] )
+                self._model.fit( X_Fold2, Y_Fold2 )
+                pred2 = self._model.predict( X_Fold1 )
 
+                pred_outputs = concatenate( [ pred1, pred2 ] )
+                true_outputs = concatenate( [ Y_Fold2, Y_Fold1 ] )
                 subset_to_accuracy.append( ( subset, accuracy_score( true_outputs, pred_outputs ) ) )
 
             subset_to_accuracy.sort( key = lambda x: x[ 1 ], reverse = True )
-            best_5.clear()
-            best_5 = [ subset_to_accuracy[ feature ][ 0 ] for feature in range( 5 ) ]
             best_features = subset_to_accuracy[ 0 ][ 0 ]
             best_accuracy = subset_to_accuracy[ 0 ][ 1 ]
 
+            best_5.clear()
+            best_5 = [ subset_to_accuracy[ feature ][ 0 ] for feature in range( 5 ) ]
             has_100 = False
             for feature in range( 5 ):
                 if subset_to_accuracy[ feature ][ 1 ] == 100: has_100 = True
@@ -168,8 +171,10 @@ class FeatureSelection:
         print( len( best_features ) )
         print( best_accuracy )
 
-dataframe = read_csv( "DiabetesBinaryClassification.csv", names = [ "Number of times pregnant","Plasma glucose concentration a 2 hours in an oral glucose tolerance test","Diastolic blood pressure (mm Hg)","Triceps skin fold thickness (mm)","2-Hour serum insulin (mu U/ml)","Body mass index (weight in kg/(height in m)^2)","Diabetes pedigree function","Age (years)","Class variable (0 or 1)" ] )
-temp = FeatureSelection( svm.SVC(), dataframe )
+dataframe = read_csv( "DiabetesBinaryClassification.csv")
+dataframe = dataframe.drop_duplicates()
+dataframe = dataframe.dropna()
+temp = FeatureSelection( SVM( "poly" ), dataframe )
 temp.get_best_model()
 
 
