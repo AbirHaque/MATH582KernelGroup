@@ -1,17 +1,19 @@
 import numpy as np
 import pandas as pd
 from cvxopt import matrix, solvers
+from kernel_private import KernelEquations
 solvers.options['show_progress'] = False
 
 class SVM:
 
-    def __init__(self, kernel_fn, C=0.1):
-        self.k = lambda p, n: p @ n
+    def __init__(self, kernel, C=0.1):
+        self.k = KernelEquations( kernel )
         self.C = C
         
     def fit(self, X, y):
         m, n = X.shape
-        K = np.matmul( X, X.T )
+
+        K = self.k.calculate_kernel( X = X, gamma = 1, var = 0.1, d = 3, coef0 = 1 )
 
         P = matrix( np.matmul( y, y.T ) * K )
         q = matrix( np.ones( ( m, 1 ) ) * -1 )
