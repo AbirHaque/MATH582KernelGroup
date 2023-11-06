@@ -10,30 +10,26 @@ class KernelEquations:
         self._kernel_selection = kernel_selection
 
         if kernel_selection == "linear":
-            self._kernel_function = lambda X: np.matmul(X, X.T)
+            self._kernel_function = lambda X, y: np.matmul( X, y.T )
         
         elif kernel_selection == "rbf":
-            def rbf( X, var, gamma ):
-                X_norm = np.sum(X ** 2, axis = -1)
-                return var * np.exp( -gamma * ( X_norm[ :,None ] + X_norm[ None, : ] - 2 * np.dot( X, X.T ) ) )
-            
-            self._kernel_function = rbf
+            self._kernel_function = lambda X, y, sigma: np.exp( -( X - y ).T @ ( X - y ) / sigma ** 2 )
 
         elif kernel_selection == "poly":
-            self._kernel_function = lambda X, d: np.linalg.matrix_power( np.matmul( X, X.T ), d)
+            self._kernel_function = lambda X, y, d, C: ( np.matmul( X, y.T ) + C ) ** d
 
         elif kernel_selection == "sigmoid":
-            self._kernel_function = lambda X, gamma, coef0: np.tanh( gamma * np.dot( X, X.T ) + coef0 )
+            self._kernel_function = lambda X, y , sigma, coef0: np.tanh( sigma * np.dot( X, y.T ) + coef0 )
     
     def calculate_kernel( self, **kwargs ):
         if self._kernel_selection == "linear":
-            return self._kernel_function( kwargs[ "X" ] )
+            return self._kernel_function( kwargs[ "X" ], kwargs[ "y" ] )
 
         elif self._kernel_selection == "rbf":
-            return self._kernel_function( kwargs[ "X" ], kwargs[ "gamma" ], kwargs[ "var" ]  )
+            return self._kernel_function( kwargs[ "X" ], kwargs[ "y" ], kwargs[ "sigma" ] )
         
         elif self._kernel_selection == "poly":
-            return self._kernel_function( kwargs[ "X" ], kwargs[ "d" ] )
+            return self._kernel_function( kwargs[ "X" ], kwargs[ "y" ], kwargs[ "d" ], kwargs[ "C" ] )
         
         elif self._kernel_selection == "sigmoid":
-            return self._kernel_function( kwargs[ "X" ], kwargs[ "gamma" ], kwargs[ "coef0" ] )
+            return self._kernel_function( kwargs[ "X" ], kwargs[ "y" ], kwargs[ "sigma" ], kwargs[ "coef0" ] )

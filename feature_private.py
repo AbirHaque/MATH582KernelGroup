@@ -174,7 +174,7 @@ class FeatureSelection:
 dataframe = read_csv( "DiabetesBinaryClassification.csv")
 dataframe = dataframe.drop_duplicates()
 dataframe = dataframe.dropna()
-temp = FeatureSelection( SVM( "sigmoid" ), dataframe )
+temp = FeatureSelection( SVM( "poly" ), dataframe )
 temp.get_best_model()
 
 
