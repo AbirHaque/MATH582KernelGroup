@@ -16,7 +16,7 @@ class KernelEquations:
             self._kernel_function = lambda X, y, sigma: np.exp( -( X - y ).T @ ( X - y ) / sigma ** 2 )
 
         elif kernel_selection == "poly":
-            self._kernel_function = lambda X, y, d, C: ( np.matmul( X, y.T ) + C ) ** d
+            self._kernel_function = lambda X, y, d, C: ( ( X @ y.T ) + C ) ** d
 
         elif kernel_selection == "sigmoid":
             self._kernel_function = lambda X, y , sigma, coef0: np.tanh( sigma * np.dot( X, y.T ) + coef0 )
